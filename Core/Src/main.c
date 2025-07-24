@@ -18,8 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "kernel.h"
 #include <stdio.h>
-extern void runFirstThread(void);
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -32,7 +33,7 @@ extern void runFirstThread(void);
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define RUN_FIRST_THREAD 0x3
+// RUN_FIRST_THREAD moved to kernel.h
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,7 +45,7 @@ extern void runFirstThread(void);
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint32_t *stackptr;
+// stackptr moved to kernel.c
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -94,35 +95,6 @@ void run_first_thread(void)
     __asm("SVC #3");
 }
 
-void SVC_Handler_Main(unsigned int *svc_args)
-{
-    unsigned int svc_number;
-    /*
-     * Stack contains:
-     * r0, r1, r2, r3, r12, r14, the return address and xPSR
-     * First argument (r0) is svc_args[0]
-     */
-    svc_number = ((char *)svc_args[6])[-2];
-    switch (svc_number)
-    {
-    case 1:
-        printf("System Call 1 - SUCCESS\r\n");
-        break;
-    case 2:
-        printf("System Call 2 - ERROR\r\n");
-        break;
-    case RUN_FIRST_THREAD:
-        __set_PSP((uint32_t)stackptr);
-        runFirstThread();
-        break;
-    case 17: // 17 is sort of arbitrarily chosen
-        printf("Success!\r\n");
-        break;
-    default: /* unknown SVC */
-        break;
-    }
-}
-
 /* USER CODE END 0 */
 
 /**
@@ -157,35 +129,36 @@ int main(void)
     MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
 
-    char m = 'm';
     printf("Hello, world!\n\r");
 
     // Test the system calls
     print_success();
     print_error();
 
-    // Set up the new stack pointer
-    uint32_t *MSP_INIT_VAL = *(uint32_t **)0;
+    uint32_t *MSP_INIT_VAL = *(uint32_t **)0x0;
     printf("MSP Init is: %p\n\r", MSP_INIT_VAL);
 
-    // Get a new stack pointer (offset from MSP)
-    stackptr = (uint32_t *)((uint32_t)MSP_INIT_VAL - 0x800);
+    // Step 1: Initialize the OS Kernel
+    printf("=== Step 1: Initialize OS Kernel ===\r\n");
+    osKernelInitialize();
 
-    // Set up the stack frame for the new thread
-    *(--stackptr) = 1 << 24;                      // xPSR - magic number
-    *(--stackptr) = (uint32_t)print_continuously; // PC - function to run
-    *(--stackptr) = 0xA;                          // LR (R14)
+    // Step 2: Create a thread using the OS interface
+    printf("\r\n=== Step 2: Create Thread ===\r\n");
+    bool thread_created = osCreateThread((void (*)(void *))print_continuously);
 
-    // Fill the remaining 14 register slots with 0xA
-    for (int i = 0; i < 14; i++)
+    if (thread_created)
     {
-        *(--stackptr) = 0xA;
+        printf("Thread created successfully!\r\n");
+
+        // Step 3: Start the kernel (run the thread)
+        printf("\r\n=== Step 3: Start OS Kernel ===\r\n");
+        osKernelStart();
     }
-
-    printf("Stack set up, calling run_first_thread...\r\n");
-
-    // Now call the system call to run the first thread
-    run_first_thread();
+    else
+    {
+        printf("ERROR: Failed to create thread!\r\n");
+        printf("System will not start threads.\r\n");
+    }
 
     /* USER CODE END 2 */
 
