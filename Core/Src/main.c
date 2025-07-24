@@ -61,43 +61,50 @@ void run_first_thread(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+uint32_t num = 0;
+typedef struct
+{
+    uint32_t add_value;
+    uint32_t multiply_by;
+} thread_params_t;
+
 int __io_putchar(int ch)
 {
     HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
     return ch;
 }
 
-void thread1_function()
+void yielding_thread(void *args)
 {
+    uint32_t count = 0;
     while (1)
     {
-        // Add delay loop with different iteration count
-        for (int i = 0; i < 20001; i++)
+        for (int i = 0; i < 2; i++)
         {
+            count++;
+            printf("Yielding Thread %lu: num = %lu\r\n", count, num);
         }
 
-        printf("Thread 1\r\n");
+        for (int i = 0; i < 100000; i++)
+            ;
+
         osYield();
     }
 }
-
-void thread2_function()
+// Thread 2: preemptive only
+void preemptive_thread(void *args)
 {
+    thread_params_t *params = (thread_params_t *)args;
+    uint32_t local_counter = 0;
+
+    printf("Preemptive thread: add_value=%lu, multiply_by=%lu\r\n",
+           params->add_value, params->multiply_by);
+
     while (1)
     {
-        // Add delay loop with different iteration count
-        for (int i = 0; i < 20002; i++)
-        {
-        }
-
-        printf("Thread 2\r\n");
-        osYield();
+        local_counter += params->add_value;
+        num = local_counter * params->multiply_by;
     }
-}
-
-void jumpAssembly(void *fcn)
-{
-    __asm("MOV PC, R0");
 }
 
 void print_success(void)
@@ -108,11 +115,6 @@ void print_success(void)
 void print_error(void)
 {
     __asm("SVC #2");
-}
-
-void run_first_thread(void)
-{
-    __asm("SVC #3");
 }
 
 /* USER CODE END 0 */
@@ -149,32 +151,34 @@ int main(void)
     MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
 
-    // Step 1: Initialize kernel
+    // Initialize kernel
     osKernelInitialize();
 
-    // Step 2: Create threads
-    bool thread1_created = osCreateThread((void (*)(void *))thread1_function);
-    bool thread2_created = osCreateThread((void (*)(void *))thread2_function);
+    // Create struct argument
+    thread_params_t preemptive_params = {
+        .add_value = 7,
+        .multiply_by = 3};
 
-    // Step 3: Start the kernel using osKernelStart
-    if (thread1_created && thread2_created)
+    // Create Thread 1: Uses osYield
+    bool yielding_created = osCreateThread(yielding_thread, NULL);
+
+    // Create Thread 2: Never yields
+    bool preemptive_created = osCreateThreadWithDeadline(preemptive_thread, &preemptive_params, 100);
+
+    if (yielding_created && preemptive_created)
     {
-        printf("Starting multithreading with context switching...\r\n");
+        printf("Starting kernel...\r\n");
         osKernelStart();
     }
     else
     {
-        printf("ERROR: Not all threads created successfully!\r\n");
+        printf("ERROR: Failed to create threads!\r\n");
     }
 
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
-
-    uint32_t PSP_val = (uint32_t)MSP_INIT_VAL - 0x400;
-    __set_PSP(PSP_val);
-    __set_CONTROL(0x2);
 
     while (1)
     {

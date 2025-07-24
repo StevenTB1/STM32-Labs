@@ -22,6 +22,7 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "kernel.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -41,7 +42,11 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+// External kernel variables
+extern thread threads[];
+extern uint32_t num_created_threads;
+extern uint32_t current_thread_index;
+extern bool kernel_running;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -161,6 +166,23 @@ void SysTick_Handler(void)
     /* USER CODE END SysTick_IRQn 0 */
     HAL_IncTick();
     /* USER CODE BEGIN SysTick_IRQn 1 */
+
+    // Pre-emptive multitasking logic
+    if (kernel_running &&
+        num_created_threads > 0 &&
+        current_thread_index < MAX_THREADS &&
+        threads[current_thread_index].is_active)
+    {
+        if (threads[current_thread_index].runtime > 0)
+            threads[current_thread_index].runtime--;
+
+        if (threads[current_thread_index].runtime == 0)
+        {
+            threads[current_thread_index].runtime = threads[current_thread_index].timeslice;
+            _ICSR |= 1 << 28;
+            __asm("isb");
+        }
+    }
 
     /* USER CODE END SysTick_IRQn 1 */
 }
