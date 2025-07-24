@@ -1,4 +1,4 @@
- .syntax unified //This lets us use C like comments!
+  .syntax unified //This lets us use C like comments!
   .cpu cortex-m4 //Guess what this does
   .thumb //Practically this only matters to the CPU, but it ensures that the correct types of instructions get included
 
@@ -12,7 +12,7 @@
 	B SVC_Handler_Main //Go to the C function, because screw assembly
 
 
-  .global runFirstThread
+  .global runFirstThread //Running the first thread requires some special consideration, so it is its own function
   .thumb_func
   runFirstThread:
   	//Restore MSP since we have two things on there that won't go away
@@ -25,3 +25,20 @@
   	LDMIA R0!,{R4-R11}
   	MSR PSP, R0
   	BX LR
+
+   .global PendSV_Handler //In general, we want to use PendSV for the actual context switching
+   .thumb_func
+   PendSV_Handler:
+	//Restore MSP since we have two things on there that won't go away
+	//POP {R7}
+	//POP {R7}
+
+	//Perform the switch
+	MRS R0, PSP
+	STMDB R0!,{R4-R11}
+	BL osSched
+	MRS R0, PSP
+	MOV LR, #0xFFFFFFFD
+	LDMIA R0!,{R4-R11}
+	MSR PSP, R0
+	BX LR

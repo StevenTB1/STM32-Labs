@@ -67,11 +67,31 @@ int __io_putchar(int ch)
     return ch;
 }
 
-void print_continuously()
+void thread1_function()
 {
     while (1)
     {
-        printf("Hello, world!\n\r");
+        // Add delay loop with different iteration count
+        for (int i = 0; i < 20001; i++)
+        {
+        }
+
+        printf("Thread 1\r\n");
+        osYield();
+    }
+}
+
+void thread2_function()
+{
+    while (1)
+    {
+        // Add delay loop with different iteration count
+        for (int i = 0; i < 20002; i++)
+        {
+        }
+
+        printf("Thread 2\r\n");
+        osYield();
     }
 }
 
@@ -129,35 +149,22 @@ int main(void)
     MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
 
-    printf("Hello, world!\n\r");
-
-    // Test the system calls
-    print_success();
-    print_error();
-
-    uint32_t *MSP_INIT_VAL = *(uint32_t **)0x0;
-    printf("MSP Init is: %p\n\r", MSP_INIT_VAL);
-
-    // Step 1: Initialize the OS Kernel
-    printf("=== Step 1: Initialize OS Kernel ===\r\n");
+    // Step 1: Initialize kernel
     osKernelInitialize();
 
-    // Step 2: Create a thread using the OS interface
-    printf("\r\n=== Step 2: Create Thread ===\r\n");
-    bool thread_created = osCreateThread((void (*)(void *))print_continuously);
+    // Step 2: Create threads
+    bool thread1_created = osCreateThread((void (*)(void *))thread1_function);
+    bool thread2_created = osCreateThread((void (*)(void *))thread2_function);
 
-    if (thread_created)
+    // Step 3: Start the kernel using osKernelStart
+    if (thread1_created && thread2_created)
     {
-        printf("Thread created successfully!\r\n");
-
-        // Step 3: Start the kernel (run the thread)
-        printf("\r\n=== Step 3: Start OS Kernel ===\r\n");
+        printf("Starting multithreading with context switching...\r\n");
         osKernelStart();
     }
     else
     {
-        printf("ERROR: Failed to create thread!\r\n");
-        printf("System will not start threads.\r\n");
+        printf("ERROR: Not all threads created successfully!\r\n");
     }
 
     /* USER CODE END 2 */

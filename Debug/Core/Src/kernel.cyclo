@@ -1,6 +1,9 @@
-../Core/Src/kernel.c:18:6:osKernelInitialize	1
-../Core/Src/kernel.c:36:6:osKernelStart	3
-../Core/Src/kernel.c:61:6:kernel_init	1
-../Core/Src/kernel.c:81:11:allocate_thread_stack	2
-../Core/Src/kernel.c:109:6:osCreateThread	3
-../Core/Src/kernel.c:148:6:SVC_Handler_Main	5
+../Core/Src/kernel.c:20:6:osSched	4
+../Core/Src/kernel.c:61:6:osYield	1
+../Core/Src/kernel.c:70:6:osKernelInitialize	1
+../Core/Src/kernel.c:88:6:osKernelStart	5
+../Core/Src/kernel.c:127:11:osGetInitialMSP	1
+../Core/Src/kernel.c:136:6:kernel_init	2
+../Core/Src/kernel.c:163:11:allocate_thread_stack	2
+../Core/Src/kernel.c:191:6:osCreateThread	6
+../Core/Src/kernel.c:252:6:SVC_Handler_Main	8
